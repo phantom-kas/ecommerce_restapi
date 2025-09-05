@@ -8,4 +8,12 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 
+Route::get('/test_api', function () {
+    return "oposadsamdsam";
+});
+
+Route::get('/', function () {
+    return "<h1>Hello world</h1>";
+});
+
 require __DIR__ . '/auth.php';
