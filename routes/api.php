@@ -16,4 +16,12 @@ Route::get('/', function () {
     return "<h1>Hello world</h1>";
 });
 
+
+
+
+
 require __DIR__ . '/auth.php';
+require __DIR__ . '/products.php';
+require __DIR__ . '/brand.php';
+
+

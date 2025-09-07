@@ -21,6 +21,8 @@ return new class extends Migration
             $table->json('images')->nullable();
             $table->json('review_sumary')->nullable();
             $table->string('reviews')->nullable();
+            $table->longText('description')->nullable();
+
             
 
             $table->foreign('order_id')->references('id')->on('orders');

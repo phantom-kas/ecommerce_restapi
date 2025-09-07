@@ -10,7 +10,7 @@ class JsonResponseHelper
     public static function getStatus(int $status): string
     {
         if ($status >= 200 && $status < 300) return 'success';
-        if ($status >= 400 && $status < 500) return 'fail';
+        if ($status >= 400 && $status < 500) return 'error';
         if ($status >= 500) return 'error';
         return 'unknown';
     }

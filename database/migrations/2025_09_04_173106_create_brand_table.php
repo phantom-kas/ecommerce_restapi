@@ -11,14 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('category', function (Blueprint $table) {
+        Schema::create('brand', function (Blueprint $table) {
             $table->id();
             $table->integer("num_products",false)->default(0);
             $table->string('name', 100)->nullable();
             $table->longText('description')->nullable();
             $table->timestamps();
-            $table->string('image',255)->nullable();
-
+            
         });
     }
 

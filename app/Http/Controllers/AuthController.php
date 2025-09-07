@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -21,16 +22,13 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-
         // dd('Error');
-
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'role' => 'in:user,admin,super_admin',
         ]);
-
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
@@ -44,27 +42,20 @@ class AuthController extends Controller
         //     [1, 2, 3, 4, 5],   // data
         //     'Profile retrieved successfully' // message
         // );
-
         $user = User::create([
             'name'     => $validated['name'],
             'email'    => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'role'     => $validated['role'] ?? 'user',
         ]);
-
         // Create Sanctum token
-        $token = $user->createToken('auth_token')->plainTextToken;
+
         $verifyLink = env('FRONTEND_ORIGIN') . '/verify-email';
         $htmlBody = view('emails.verify', [
             'name' => $user->name,
             'verifyLink' => $verifyLink
         ])->render();
-
-
         MailHelper::sendVerificationEmail($user->email, "Verify Your Email", $htmlBody);
-
-
-
         return JsonResponseHelper::standardResponse(
             200,
             $user,
@@ -81,7 +72,6 @@ class AuthController extends Controller
             'email'    => 'required|email',
             'password' => 'required|string',
         ]);
-
         $user = User::where('email', $validated['email'])->first();
 
         if (!$user || !Hash::check($validated['password'], $user->password)) {
@@ -91,18 +81,73 @@ class AuthController extends Controller
                 'Invalid credentials'
             );
         }
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $accessToken = $user->createToken('access_token');
+        $refreshToken = $user->createToken('refresh_token');
 
+       
         return JsonResponseHelper::standardResponse(
             200,
             [
                 'user' => $user,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
+                'access_token' => $accessToken,
+                'refresh_token' =>  null,
             ],
             'Login successful'
-        );
+        )->withCookie(cookie(
+            'refresh_token',
+            $refreshToken,
+            60 * 24 * 7,
+            '/',
+            null,
+            true,
+            true,
+            false,
+            'Strict'
+        ));
     }
+
+
+    public function refresh(Request $request)
+    {
+        $refreshToken = $request->cookie('refresh_token'); // or from header/body
+        if (!$refreshToken) {
+            return response()->json(['error' => 'Refresh token missing'], 401);
+        }
+
+        $hashed = hash('sha256', $refreshToken);
+        $record = DB::select('select user_id ,id,token from refresh_tokens where expires_at > ? and is_refresh = ? and token = ? limit 1', [now(), false, $hashed]);
+        if (empty($records)) {
+            return JsonResponseHelper::standardResponse(
+                401,
+                null,
+                'Invalid or expired refresh token'
+            );
+        }
+        $record = $records[0];
+        // DB::update(
+        //     'update refresh_tokens set is_refresh = ? where user_id = ?',
+        //     [true, $record->user_id]
+        // );
+        $user = User::find($record->user_id);
+        $accessToken = $user->createToken('access_token')->plainTextToken;
+        $newRefreshToken = $user->createToken('refresh_token', ['is_refresh' => true])->plainTextToken;
+        return response()->json([
+            'access_token'  => $accessToken,
+            'refresh_token' => $newRefreshToken,
+        ])->withCookie(cookie(
+            'refresh_token',
+            $newRefreshToken,
+            60 * 24 * 7,
+            '/',
+            null,
+            true,
+            true,
+            false,
+            'Strict'
+        ));
+    }
+
+
 
 
     public function forgotPassword(Request $request)
@@ -171,6 +216,30 @@ class AuthController extends Controller
             'Password has been reset successfully'
         );
     }
+
+
+    public function tokenPayload(Request $request)
+    {
+        try {
+            // Get token from Authorization: Bearer <token>
+            $token = \Tymon\JWTAuth\Facades\JWTAuth::getToken();
+            if (!$token) {
+                return response()->json(['error' => 'Token not provided'], 400);
+            }
+
+            // Decode payload
+            $payload = \Tymon\JWTAuth\Facades\JWTAuth::getPayload($token)->toArray();
+
+            return response()->json([
+                'success' => true,
+                'payload' => $payload,
+            ]);
+
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json(['error' => 'Invalid or expired token'], 401);
+        }
+    }
+
 
 
     public function index()
