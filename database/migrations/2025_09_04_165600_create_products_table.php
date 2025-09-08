@@ -13,19 +13,23 @@ return new class extends Migration
     {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('order_id');
-            $table->string('payment_id')->unique(); // Stripe’s payment intent ID
-            $table->decimal('amount', 10, 2)->default(0);
+            // $table->string('payment_id')->unique();
+            $table->string('name'); // Stripe’s payment intent ID
+            $table->decimal('price', 10, 2)->default(0);
+            $table->integer('quantity')->default(0);
             $table->enum('status', ['pending', 'succeeded', 'failed'])->default('pending');
             $table->timestamps();
-            $table->json('images')->nullable();
+            $table->json('media')->nullable();
             $table->json('review_sumary')->nullable();
-            $table->string('reviews')->nullable();
+            $table->integer('total_reviews')->nullable();
+            $table->integer('num_review')->nullable();
             $table->longText('description')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->foreign('created_by')->references('id')->on('users');
 
             
 
-            $table->foreign('order_id')->references('id')->on('orders');
+            
         });
 
 

@@ -23,5 +23,6 @@ Route::get('/', function () {
 require __DIR__ . '/auth.php';
 require __DIR__ . '/products.php';
 require __DIR__ . '/brand.php';
+require __DIR__ . '/category.php';
 
 
