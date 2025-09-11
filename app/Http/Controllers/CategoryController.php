@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\JsonResponseHelper;
 use App\Models\Category;
+use App\Models\System;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -37,6 +38,9 @@ class CategoryController extends Controller
             'description' => $validated['description'],
         ]);
 
+
+        app(SystemController::class)->increaseCategoryCount();
+
         return JsonResponseHelper::standardResponse(
             201,
             $brand,
@@ -69,12 +73,19 @@ class CategoryController extends Controller
     {
         // calculate offset
         $categories =  DB::table('category')
-            ->select('id', 'name', )
+            ->select('id', 'name',)
             ->orderBy('id', 'desc')
             ->get();
         return  JsonResponseHelper::standardResponse(
             201,
             $categories,
         );
+    }
+
+
+
+    public function increaseCategoryCount(int $by = 1)
+    {
+        System::first()->increment('brand_count', $by);
     }
 }

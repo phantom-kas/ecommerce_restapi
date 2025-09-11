@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name'); // Stripe’s payment intent ID
             $table->decimal('price', 10, 2)->default(0);
             $table->integer('quantity')->default(0);
-            $table->enum('status', ['pending', 'succeeded', 'failed'])->default('pending');
+            $table->enum('status', ['pending', 'succeeded', 'failed','deleted','blocked'])->default('pending');
             $table->timestamps();
             $table->json('media')->nullable();
             $table->json('review_sumary')->nullable();

@@ -41,6 +41,8 @@ class BrandController  extends Controller
             'description' => $validated['description'],
         ]);
 
+        app(SystemController::class)->increaseBrandCount();
+
         return JsonResponseHelper::standardResponse(
             201,
             $brand,
@@ -64,6 +66,7 @@ class BrandController  extends Controller
             ->offset($offset)
             ->limit($perPage)
             ->get();
+
 
         return  JsonResponseHelper::standardResponse(
             201,

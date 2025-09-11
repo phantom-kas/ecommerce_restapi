@@ -84,7 +84,7 @@ class AuthController extends Controller
         $accessToken = $user->createToken('access_token');
         $refreshToken = $user->createToken('refresh_token');
 
-       
+
         return JsonResponseHelper::standardResponse(
             200,
             [
@@ -99,10 +99,10 @@ class AuthController extends Controller
             60 * 24 * 7,
             '/',
             null,
-            true,
+            app()->environment('production'),
             true,
             false,
-            'Strict'
+            'none'
         ));
     }
 
@@ -111,7 +111,7 @@ class AuthController extends Controller
     {
         $refreshToken = $request->cookie('refresh_token'); // or from header/body
         if (!$refreshToken) {
-            return response()->json(['error' => 'Refresh token missing'], 401);
+            return JsonResponseHelper::standardResponse(401, null, 'Refresh token missing');
         }
 
         $hashed = hash('sha256', $refreshToken);
@@ -124,27 +124,29 @@ class AuthController extends Controller
             );
         }
         $record = $records[0];
-        // DB::update(
-        //     'update refresh_tokens set is_refresh = ? where user_id = ?',
-        //     [true, $record->user_id]
-        // );
         $user = User::find($record->user_id);
         $accessToken = $user->createToken('access_token')->plainTextToken;
         $newRefreshToken = $user->createToken('refresh_token', ['is_refresh' => true])->plainTextToken;
-        return response()->json([
-            'access_token'  => $accessToken,
-            'refresh_token' => $newRefreshToken,
-        ])->withCookie(cookie(
+
+
+        return JsonResponseHelper::standardResponse(
+            200,
+            [
+                'access_token'  => $accessToken,
+                'refresh_token' => null,
+            ],
+            'new rtkn'
+        )->withCookie(cookie(
             'refresh_token',
             $newRefreshToken,
             60 * 24 * 7,
             '/',
             null,
-            true,
+            app()->environment('production'),
             true,
             false,
-            'Strict'
-        ));
+            'none'
+        ));;
     }
 
 
@@ -234,7 +236,6 @@ class AuthController extends Controller
                 'success' => true,
                 'payload' => $payload,
             ]);
-
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
             return response()->json(['error' => 'Invalid or expired token'], 401);
         }

@@ -12,6 +12,8 @@ Route::controller(AuthController::class)->group(function () {
   });
   Route::post('/login', 'login');
   Route::get('/me/payload', 'tokenPayload');
-  Route::post('/signin', 'login');
+
+  Route::post('/refresh', 'refresh');
+
 });
 

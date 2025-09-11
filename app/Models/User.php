@@ -10,11 +10,13 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
 
+     use HasFactory , Notifiable;
     public function createToken(string $type = 'access_token', array $customClaims = [])
     {
         if ($type === 'refresh_token') {
