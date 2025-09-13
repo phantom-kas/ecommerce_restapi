@@ -39,9 +39,9 @@ class Cart extends Model
         }
         $sql = '';
         if ($includeMedia) {
-            $sql = ' p.meida , p.description , p.created_at';
+            $sql = ' p.media , p.description , p.created_at ,';
         }
-        return DB::select("SELECT $sql oi.*, p.price,p.name,p.media, p.quantity as num_available from order_items as oi inner join products as p on oi.product_id = p.id where oi.order_id = ?", [$currentCart]);
+        return DB::select("SELECT $sql oi.* , p.price,p.name,p.media, p.quantity as num_available from order_items as oi inner join products as p on oi.product_id = p.id where oi.order_id = ?", [$currentCart]);
     }
 
     public static function calCulateTotalOfCart($CartItems)
@@ -102,7 +102,7 @@ class Cart extends Model
             if ($value['quantity'] + $product->quantity >= $product->num_available) {
                 continue;
             } else if ($product->order_id == null) {
-                DB::table('order_items')->insert(['user_id' => $userId, 'quantity' => $value['quantity'], 'product_id' => $value['product_id'], 'order_id' => $currentCart]);
+                DB::table('order_items')->insert(['amount' => $product->price * $value['quantity'], 'user_id' => $userId, 'quantity' => $value['quantity'], 'product_id' => $value['product_id'], 'order_id' => $currentCart]);
             } else {
                 DB::table('order_items')->where('product_id', $value['product_id'])->where('order_id', $product->order_id)->update(['quantity' => ($value['quantity'] + $product->quantity), 'amount' => (intval($product->amount) + intval($product->price))]);
             };
@@ -115,28 +115,57 @@ class Cart extends Model
 
         $totalData = self::calCulateTotalOfCart($currentCArtItems);
         self::updateCartTotal($currentCart, $totalData['total'], $totalData['totalUnits']);
-        return ['totaldata' => $totalData, 'cartitems' => $currentCArtItems];
+        return ['total' => $totalData, 'cartItems' => $currentCArtItems];
     }
 
 
-    public  static function removeProductFromCart($cartItemId)
+    /**
+     * @param mixed $cartItemId
+     * @param int $count Passing -1 will completely remove this item, but 1 for example will reduce quantity by 1
+     * @return false|array{totaldata: array{total: mixed, totalUnits: mixed}, cartitems: array}
+     */
+    public  static function removeProductFromCart($cartItemId, $userId, $count = 1)
     {
-        $cartItem = DB::select(" SELECT order_id quantity from order_items where id = ? limit 1", [$cartItemId]);
-
-
+        $cartItem = DB::select(" SELECT order_id , quantity from order_items where id = ? and user_id = ? limit 1", [$cartItemId, $userId]);
         if (count($cartItem) < 1) {
             return false;
         }
         $cartItem =  $cartItem[0];
-
-        if ($cartItem['quantity'] < 2) {
+        if (($cartItem->quantity - $count) < 1 || $count < 0) {
             DB::table('order_items')->delete($cartItemId);
         } else {
-            DB::table('order_items')->where('id', $cartItemId)->decrement('quantity', 1);
+            DB::table('order_items')->where('id', $cartItemId)->decrement('quantity', $count);
         }
-        $currentCArtItems = self::getItemsOfActiveCart($cartItem['order_id']);
+        $currentCArtItems = self::getItemsOfActiveCart($cartItem->order_id);
         $totalData = self::calCulateTotalOfCart($currentCArtItems);
-        self::updateCartTotal($cartItem['order_id'], $totalData['total'], $totalData['totalUnits']);
-        return ['totaldata' => $totalData, 'cartitems' => $currentCArtItems];
+        self::updateCartTotal($cartItem->order_id, $totalData['total'], $totalData['totalUnits']);
+        return ['total' => $totalData, 'cartItems' => $currentCArtItems];
+    }
+
+    /**
+     * @param mixed $cartItemId
+     * @param int $count Passing 0 will completely remove this item, but 1 for example will set the quantity to 1
+     * @return false|array{totaldata: array{total: mixed, totalUnits: mixed}, cartitems: array}
+     */
+
+    public  static function setItemCount($cartItemId, $userId, $count)
+    {
+        $cartItem = DB::select("SELECT oi.order_id,oi.amount, p.price,p.quantity as num_available , oi.quantity from products as p inner join order_items as oi on oi.product_id = p.id  where oi.id = ?  and oi.user_id = ? limit 1", [$cartItemId, $userId]);
+        if (count($cartItem) < 1) {
+            return false;
+        }
+        $cartItem =  $cartItem[0];
+        if ($count > $cartItem->num_available) {
+            return false;
+        }
+        if ($count < 1) {
+            DB::table('order_items')->delete($cartItemId);
+        } else {
+            DB::table('order_items')->where('id', $cartItemId)->update(['quantity' => $count, 'amount' => $count * $cartItem->price]);
+        }
+        $currentCArtItems = self::getItemsOfActiveCart($cartItem->order_id, null, true);
+        $totalData = self::calCulateTotalOfCart($currentCArtItems);
+        self::updateCartTotal($cartItem->order_id, $totalData['total'], $totalData['totalUnits']);
+        return ['total' => $totalData, 'cartItems' => $currentCArtItems];
     }
 }

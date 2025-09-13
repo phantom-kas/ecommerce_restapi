@@ -72,7 +72,7 @@ class ProductController extends Controller
             'created_by' => $request->user->id,
         ]);
 
-       
+
 
 
         DB::table('products_brand')->insert([
@@ -131,18 +131,49 @@ class ProductController extends Controller
         );
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $cursor = request()->query('cursor', 1);
+        $cursor = $request->query('cursor', 1);
         $page = $cursor;
+        $category = $request->query('category');
+        $brands = $request->query('brand', []);
+        $sort = $request->query('sort');
         $perPage = request()->query('perpage', 1);
         $offset = ($page - 1) * $perPage;
-        $products =  DB::table('products')
-            // ->select('id', 'name', 'description')
+        // $placeholders = implode(',', array_fill(0, count($category), '?'));
+        $query = DB::table('products as p')
+            ->select('p.*')
+            ->when($brands, function ($q) use ($brands) {
+                $q->join('products_brand as pb', 'p.id', '=', 'pb.product_id')
+                    ->join('brand as b', 'b.id', '=', 'pb.brand_id')
+                    ->whereIn('b.name',$brands);
+            });
+        if ($category) {
+             $query->join("products_category as pc",'p.id' , '=', 'pc.product_id')
+             ->join('category as c', 'c.id', '=', 'pc.category_id')
+                    ->where('c.name', $category);
+        }
+        if ($sort === 'price-asc') {
+            $query->orderBy('p.price', 'asc');
+        } elseif ($sort === 'price-desc') {
+            $query->orderBy('p.price', 'desc');
+        } elseif ($sort === 'rating') {
+            $query->orderBy('p.rating', 'desc');
+        } else {
+            $query->orderBy('p.id', 'desc');
+        }
+
+
+        $products = [];
+
+        $products =  $query
             ->orderBy('id', 'desc')
             ->offset($offset)
             ->limit($perPage)
             ->get();
+
+
+
 
         return  JsonResponseHelper::standardResponse(
             201,
