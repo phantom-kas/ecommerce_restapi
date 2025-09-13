@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->string('channel', 20);
-            $table->decimal('amount', 10, 2)->default(0);
+            $table->decimal('amount', 50, 2)->default(0);
             $table->timestamps();
         });
     }

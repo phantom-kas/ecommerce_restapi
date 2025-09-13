@@ -72,8 +72,7 @@ class ProductController extends Controller
             'created_by' => $request->user->id,
         ]);
 
-        Brand::where('id', $validated['brand'])->increment('num_products');
-        Category::where('id', $validated['category'])->increment('num_products');
+       
 
 
         DB::table('products_brand')->insert([
@@ -94,8 +93,8 @@ class ProductController extends Controller
         app(CategoryController::class)->increaseCategoryCount();
         app(SystemController::class)->increaseBrandCount();
 
-        Category::increaseProducts($validated['category']);
-        Brand::increaseProducts($validated['brand']);
+        Category::increaseProducts($validated['category'], $validated['quantity']);
+        Brand::increaseProducts($validated['brand'], $validated['quantity']);
 
 
 
@@ -287,5 +286,88 @@ class ProductController extends Controller
             ->where('id', $id)
             ->update(['status' => 'succeeded']);
         return JsonResponseHelper::standardResponse(200, null, 'Product  restored successfully');
+    }
+
+    public function get($id)
+    {
+        $product = Products::find($id);
+        if (! $product) {
+            return JsonResponseHelper::standardResponse(404, null, 'Product not found');
+        }
+        $media = json_decode($product->media);
+        $categories = DB::select("SELECT c.id, c.name from products_category as pc inner join category as c on pc.category_id = c.id  where pc.product_id = ?", [$id]);
+        $brand = DB::select("SELECT b.name ,b.id from products_brand as pb inner join brand as b on pb.brand_id = b.id  where pb.product_id = ?", [$id]);
+
+        return  JsonResponseHelper::standardResponse(200, ['product' => $product, 'media' => $media,  'categories' => $categories, 'brand' => $brand]);
+    }
+
+
+    public function addCategory(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'category' => 'required|exists:category,id',
+        ]);
+        if ($validator->fails()) {
+            return JsonResponseHelper::standardResponse(400, ['status' => 'error',], 'Invalid input', ['errors' => $validator->errors()]);
+        }
+        $validated = $validator->validated();
+        if (count(DB::select("SELECT id from products_category where product_id = ? and category_id = ? limit 1", [$id, $validated['category']])) > 0) {
+            return JsonResponseHelper::standardResponse(400, null, 'Produt already has this category');
+        };
+        $product = Products::find($id);
+        DB::table('products_category')->insert(['product_id' => $id, 'category_id' => $validated['category']]);
+        Category::increaseProducts($validated['category'], $product->quantity);
+        return JsonResponseHelper::standardResponse(200, null, 'Produt add to category successfully');
+    }
+
+
+    public function removeCategory(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'category' => 'required|exists:category,id',
+        ]);
+        if ($validator->fails()) {
+            return JsonResponseHelper::standardResponse(400, ['status' => 'error',], 'Invalid input', ['errors' => $validator->errors()]);
+        }
+        $validated = $validator->validated();
+        if (count(DB::select("SELECT id from products_category where product_id = ? and category_id = ? limit 1", [$id, $validated['category']])) < 1) {
+            return JsonResponseHelper::standardResponse(400, null, 'Produt dos not belong in this category');
+        };
+        $product = Products::find($id);
+
+        DB::table('products_category')
+            ->where('product_id', $id)
+            ->where('category_id', $validated['category'])
+            ->delete();
+        Category::increaseProducts($validated['category'], $product->quantity * -1);
+        return JsonResponseHelper::standardResponse(200, null, 'Produt removed from category successfully');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255|unique:products,name,' . $id,
+            'description' => 'nullable|string',
+            'quantity' =>  'required|numeric|min:0',
+            'price'       => 'required|numeric|min:0',
+            'brand'    => 'required|exists:brand,id',
+        ]);
+        if ($validator->fails()) {
+            return JsonResponseHelper::standardResponse(400, ['status' => 'error'], 'Invalid input', ['errors' => $validator->errors()]);
+        }
+        // $product = Products::find($id);
+        $Oldbrand = DB::select("SELECT brand_id from products_brand where product_id = ? limit 1", [$id]);
+        $validated = $validator->validated();
+        $product =  Products::find($id);
+
+        Brand::increaseProducts($Oldbrand[0]->brand_id, $product->quantity * -1);
+        Brand::increaseProducts($validated['brand'], $validated['quantity']);
+        if ($validated['brand'] !=  $Oldbrand[0]->brand_id) {
+            DB::table('products_brand')->where('product_id', $id)->update(['brand_id' => $validated['brand']]);
+        }
+        $product->update(['price' => $validated['price'] * 100, 'name' => $validated['name'], 'description' => $validated['description'], 'quantity' => $validated['quantity']]);
+
+
+        return JsonResponseHelper::standardResponse(200, null, 'update successfull');
     }
 }

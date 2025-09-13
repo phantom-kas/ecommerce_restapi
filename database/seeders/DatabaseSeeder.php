@@ -20,6 +20,11 @@ class DatabaseSeeder extends Seeder
             'email' => fake()->unique()->safeEmail(),
         ]);
 
-         $this->call(UserSeeder::class);
+        $this->call([
+            UserSeeder::class,
+            BrandSeeder::class,
+            CategorySeeder::class,
+            ProductSeeder::class,
+        ]);
     }
 }

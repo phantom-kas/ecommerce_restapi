@@ -10,6 +10,9 @@ Route::middleware(['jwt.custom', 'role:admin,super_admin'])->group(function () {
     Route::delete('/product/{id}/media/delete', [ProductController::class, 'deleteMedia']);
     Route::delete('/product/{id}/delete', [ProductController::class, 'delete']);
     Route::delete('/product/{id}/restore', [ProductController::class, 'restoreDeleted']);
+    Route::post('/product/{id}/add-to-category', [ProductController::class, 'addCategory']);
+    Route::delete('/product/{id}/remove-from-category', [ProductController::class, 'removeCategory']);
+    Route::put('/product/{id}/update', [ProductController::class, 'update']);
 });
 
 
@@ -24,3 +27,4 @@ Route::middleware(['jwt.custom'])->group(function () {
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}/media', [ProductController::class, 'getMedia']);
+Route::get('/product/{id}', [ProductController::class, 'get']);
