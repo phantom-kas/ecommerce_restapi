@@ -21,13 +21,14 @@ class ReviewsContoller extends Controller
         ]);
 
         $userId = $request->user->id;
-        $hasOrdered = count(DB::select("SELECT oi.id from order_items as oi inner join orders as o on oi.order_id = o.id where oi.user_id = ? and oi.product_id = ? and o.status = 'succeeded'", [$userId, $validated['product_id']])) > 0;
+        $hasOrdered = count(DB::select("SELECT oi.id from order_items as oi inner join orders as o on oi.order_id = o.id where oi.user_id = ? and oi.product_id = ? and (o.status = 'succeeded' || o.status = 'paid')", [$userId, $validated['product_id']])) > 0;
         if (! $hasOrdered) {
-            return response()->json(['message' => 'You can only review products you have purchased.'], 403);
+            // return response()->json(['message' => 'You can only review products you have purchased.'], 403);
+            return JsonResponseHelper::standardResponse(400, null, 'You can only review products you have purchased.');
         }
 
-        if (count(DB::select("SELECT from review where user_id = ? and product_id = ? ", [$userId, $validated['product_id']])) > 0) {
-            return JsonResponseHelper::standardResponse(200, null, "You can't review a product more than once");
+        if (count(DB::select("SELECT id from reviews where user_id = ? and product_id = ? ", [$userId, $validated['product_id']])) > 1) {
+            return JsonResponseHelper::standardResponse(400, null, "You can't review a product more than once");
         }
 
 
@@ -40,13 +41,31 @@ class ReviewsContoller extends Controller
             'review' => $validated['review'] ?? null,
         ]);
 
-        Products::updateReview($validated['review'],$validated['product_id']);
+        Products::updateReview($validated['rating'], $validated['product_id']);
 
-        return JsonResponseHelper::standardResponse(200, $review ,  'Review added successfully!');
+        return JsonResponseHelper::standardResponse(200, $review,  'Review added successfully!');
     }
 
 
-    public function deleteReview($id){
+    public function getProductReviews($id)
+    {
+        $cursor = request()->query('cursor', 1);
+        $page = max(1, (int) $cursor);
+        $perPage = request()->query('perpage', 20);
+        $offset = ($page - 1) * $perPage;
+        $reviews = DB::table('reviews as r')
+            ->select('r.review', 'r.rating', 'u.name', 'u.image' ,'r.created_at')
+            ->join('users as u', 'r.user_id', '=', 'u.id')
+            ->where('r.product_id', $id)
+            ->orderBy('r.id', 'desc')
+            ->offset($offset)
+            ->limit($perPage)
+            ->get();
+        return JsonResponseHelper::standardResponse(200, $reviews, 'Reviews fetched successfully!');
+    }
+
+
+    public function deleteReview($id) {
 
     }
 }

@@ -26,5 +26,6 @@ require __DIR__ . '/brand.php';
 require __DIR__ . '/category.php';
 require __DIR__ . '/review.php';
 require __DIR__ . '/cart.php';
+require __DIR__ . '/payment.php';
 
 

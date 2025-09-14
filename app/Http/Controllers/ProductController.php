@@ -138,7 +138,7 @@ class ProductController extends Controller
         $category = $request->query('category');
         $brands = $request->query('brand', []);
         $sort = $request->query('sort');
-        $perPage = request()->query('perpage', 1);
+        $perPage = request()->query('perpage', 20);
         $offset = ($page - 1) * $perPage;
         // $placeholders = implode(',', array_fill(0, count($category), '?'));
         $query = DB::table('products as p')
@@ -146,19 +146,19 @@ class ProductController extends Controller
             ->when($brands, function ($q) use ($brands) {
                 $q->join('products_brand as pb', 'p.id', '=', 'pb.product_id')
                     ->join('brand as b', 'b.id', '=', 'pb.brand_id')
-                    ->whereIn('b.name',$brands);
+                    ->whereIn('b.name', $brands);
             });
         if ($category) {
-             $query->join("products_category as pc",'p.id' , '=', 'pc.product_id')
-             ->join('category as c', 'c.id', '=', 'pc.category_id')
-                    ->where('c.name', $category);
+            $query->join("products_category as pc", 'p.id', '=', 'pc.product_id')
+                ->join('category as c', 'c.id', '=', 'pc.category_id')
+                ->where('c.name', $category);
         }
         if ($sort === 'price-asc') {
             $query->orderBy('p.price', 'asc');
         } elseif ($sort === 'price-desc') {
             $query->orderBy('p.price', 'desc');
         } elseif ($sort === 'rating') {
-            $query->orderBy('p.rating', 'desc');
+            $query->orderBy('p.review', 'desc');
         } else {
             $query->orderBy('p.id', 'desc');
         }
@@ -390,15 +390,31 @@ class ProductController extends Controller
         $Oldbrand = DB::select("SELECT brand_id from products_brand where product_id = ? limit 1", [$id]);
         $validated = $validator->validated();
         $product =  Products::find($id);
-
         Brand::increaseProducts($Oldbrand[0]->brand_id, $product->quantity * -1);
         Brand::increaseProducts($validated['brand'], $validated['quantity']);
         if ($validated['brand'] !=  $Oldbrand[0]->brand_id) {
             DB::table('products_brand')->where('product_id', $id)->update(['brand_id' => $validated['brand']]);
         }
         $product->update(['price' => $validated['price'] * 100, 'name' => $validated['name'], 'description' => $validated['description'], 'quantity' => $validated['quantity']]);
-
-
         return JsonResponseHelper::standardResponse(200, null, 'update successfull');
+    }
+
+
+    public function getRatingSummary(Request $request, $id)
+    {
+        // return JsonResponseHelper::standardResponse(200, $id);
+        $product = DB::select("SELECT num_review, review_sumary, total_reviews, review FROM products WHERE id = ? LIMIT 1", [$id]);
+        if (count($product) < 1) {
+            return JsonResponseHelper::standardResponse(404, null, 'Product not found');
+        }
+        return JsonResponseHelper::standardResponse(200, $product[0]);
+    }
+
+
+    public function addToFeatured(Request $request, $id) {}
+
+    public function getFeatrued()
+    {
+        return JsonResponseHelper::standardResponse(200, DB::select("SELECT id, name , media ,price , quantity from products order by review desc limit 6"));
     }
 }

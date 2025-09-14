@@ -11,4 +11,6 @@ Route::middleware(['jwt.custom'])->group(function () {
   Route::get('/cart', [CartController::class, 'getCartActive']);
   Route::delete('/cart/remove-item', [CartController::class, 'removeProductFromCart']);
   Route::post('/cart/update-item-count', [CartController::class, 'setCartItemQuantity']);
+  Route::get('/orders', [CartController::class, 'getAllOrders']);
+  Route::get('/order/items/{id}', [CartController::class, 'getOrderItems']);
 });

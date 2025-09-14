@@ -26,5 +26,7 @@ Route::middleware(['jwt.custom'])->group(function () {
 });
 
 Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/featrued', [ProductController::class, 'getFeatrued']);
 Route::get('/products/{id}/media', [ProductController::class, 'getMedia']);
 Route::get('/product/{id}', [ProductController::class, 'get']);
+Route::get('/product/{id}/review-data', [ProductController::class, 'getRatingSummary']);

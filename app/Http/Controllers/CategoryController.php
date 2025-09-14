@@ -54,7 +54,7 @@ class CategoryController extends Controller
         $cursor = request()->query('cursor', 1);
         $page = $cursor;
         // items per page
-        $perPage = request()->query('perpage', 1);
+        $perPage = request()->query('perpage', 20);
         // calculate offset
         $offset = ($page - 1) * $perPage;
         $categories =  DB::table('category')

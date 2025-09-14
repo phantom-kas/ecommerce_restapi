@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\JsonResponseHelper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use PhpParser\Node\Stmt\Foreach_;
@@ -64,10 +65,11 @@ class Cart extends Model
 
     public static function  getProduct($cartId, $productId)
     {
-        $p = DB::select("SELECT oi.order_id,oi.amount, p.price,p.quantity as num_available , oi.quantity from products as p left outer join order_items as oi on oi.product_id = p.id  or oi.product_id is null where (oi.order_id  = ? or oi.order_id is null) and p.id = ? limit 1", [$cartId, $productId]);
+        $p = DB::select("SELECT oi.order_id,oi.amount, p.price,p.quantity as num_available , oi.quantity from products as p left outer join order_items as oi on (oi.product_id = p.id and oi.order_id  = ?)  or oi.product_id is null where  p.id = ? limit 1", [$cartId, $productId]);
         if (count($p) < 1) {
             return false;
         }
+       
         return $p[0];
     }
 
@@ -92,7 +94,7 @@ class Cart extends Model
             $currentCart = self::getActiveCartID($userId);
         }
         // dd(1);
-
+        // return JsonResponseHelper::standardResponse(200, $currentCart, 'Invalid input');
         foreach ($productArr as  $value) {
             $product = self::getProduct($currentCart, $value['product_id']);
             // return response()->json( $product);

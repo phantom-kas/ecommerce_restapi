@@ -45,11 +45,10 @@ class Products extends Model
         $product = DB::select("SELECT num_review,total_reviews,num_review, review_sumary from products where id = ? ", [$id]);
         $product = $product[0];
 
-        $summary =   $product->review_sumary ? json_decode($product->review_sumary) : [];
+        $summary = $product->review_sumary ? json_decode($product->review_sumary,true) : [];
         if (!$summary) {
-            $summary = [];
-        }
-        if (isset($product->review_sumary[$review])) {
+            $summary = [$review=>1];
+        } else if (isset($summary[$review])) {
             $summary[$review] = $summary[$review] + 1;
         } else {
             $summary[$review] = 1;
@@ -60,7 +59,7 @@ class Products extends Model
                 'num_review' => $product->num_review + 1,
                 'review_sumary' => json_encode($summary),
                 'total_reviews' => intval($product->total_reviews) + intval($review),
-                '$review' => $product->num_review + 1,
+                'review' => (intval($product->total_reviews) + intval($review)) / ($product->num_review + 1),
             ]);
     }
 }
