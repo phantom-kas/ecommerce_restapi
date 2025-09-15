@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Helpers\JsonResponseHelper;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -12,11 +13,11 @@ class RoleMiddleware
         try {
             $user = $request->user();
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return JsonResponseHelper::standardResponse(401, null, 'Unauthorized');
         }
-             
+
         if (!in_array($user->role, $roles)) {
-            return response()->json(['error' => 'Forbidden - insufficient permissions'], 403);
+            return JsonResponseHelper::standardResponse(403, null, 'Forbidden - insufficient permissions');
         }
 
         return $next($request);

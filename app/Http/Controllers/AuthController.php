@@ -81,6 +81,9 @@ class AuthController extends Controller
                 'Invalid credentials'
             );
         }
+        if (isset($user->password)) {
+            unset($user->password);
+        }
         $accessToken = $user->createToken('access_token');
         $refreshToken = $user->createToken('refresh_token');
 
@@ -93,19 +96,14 @@ class AuthController extends Controller
                 'refresh_token' =>  null,
             ],
             'Login successful'
-        )->withCookie(cookie(
-            'refresh_token',
-            $refreshToken,
-            60 * 24 * 7,
-            '/',
-            null,
-            app()->environment('production'),
-            true,
-            false,
-            'none'
-        ));
+        )->withCookie(JsonResponseHelper::makeRefreshCookie($refreshToken));
     }
 
+    public function me()
+    {
+        $id = request()->user->id;
+        return     JsonResponseHelper::standardResponse(200, DB::select("SELECT id , name , image ,email , role from users where id = ?", [$id]), 'Success');
+    }
 
     public function refresh(Request $request)
     {
@@ -115,18 +113,18 @@ class AuthController extends Controller
         }
 
         $hashed = hash('sha256', $refreshToken);
-        $record = DB::select('select user_id ,id,token from refresh_tokens where expires_at > ? and is_refresh = ? and token = ? limit 1', [now(), false, $hashed]);
-        if (empty($records)) {
+        $record = DB::select('select user_id ,id,token from refresh_tokens where expires_at > ? and is_refresh = ? and token = ? limit 1', [now(), 0, $hashed]);
+        if (empty($record)) {
             return JsonResponseHelper::standardResponse(
                 401,
                 null,
-                'Invalid or expired refresh token'
+                'Invalid or expired refresh token '
             );
         }
-        $record = $records[0];
+        $record = $record[0];
         $user = User::find($record->user_id);
-        $accessToken = $user->createToken('access_token')->plainTextToken;
-        $newRefreshToken = $user->createToken('refresh_token', ['is_refresh' => true])->plainTextToken;
+        $accessToken = $user->createToken('access_token');
+        $newRefreshToken = $user->createToken('refresh_token', ['is_refresh' => 1]);
 
 
         return JsonResponseHelper::standardResponse(
@@ -136,17 +134,7 @@ class AuthController extends Controller
                 'refresh_token' => null,
             ],
             'new rtkn'
-        )->withCookie(cookie(
-            'refresh_token',
-            $newRefreshToken,
-            60 * 24 * 7,
-            '/',
-            null,
-            app()->environment('production'),
-            true,
-            false,
-            'none'
-        ));;
+        )->withCookie(JsonResponseHelper::makeRefreshCookie($refreshToken));
     }
 
 

@@ -16,22 +16,22 @@ class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
 
-     use HasFactory , Notifiable;
+    use HasFactory, Notifiable;
     public function createToken(string $type = 'access_token', array $customClaims = [])
     {
         if ($type === 'refresh_token') {
-            // Generate a random refresh token
+
             $refreshToken = Str::random(64);
 
-            // Store in DB (table: refresh_tokens)
+
             DB::update(
                 'update refresh_tokens set is_refresh = ? where user_id = ?',
-                [true,$this->id]
+                [true, $this->id]
             );
             DB::table('refresh_tokens')->insert([
-                'user_id'    => $this->id,
+                'user_id' => $this->id,
                 'name' => '',
-                'token'      => hash('sha256', $refreshToken), // hash for safety
+                'token'  => hash('sha256', $refreshToken),
                 'expires_at' => now()->addDays(7),
                 'created_at' => now(),
             ]);
@@ -73,6 +73,7 @@ class User extends Authenticatable implements JWTSubject
     protected $fillable = [
         'name',
         'email',
+        'image',
         'password',
     ];
 

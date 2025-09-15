@@ -98,7 +98,7 @@ class CartController extends Controller
             ->join("users as u", 'u.id', '=', 'o.user_id')
             ->orderBy('o.id', 'desc');
 
-        if ($authUser->role !== 'user') {
+        if ($authUser->role === 'user') {
             $query->where('o.user_id', $authUser->id);
         }
 

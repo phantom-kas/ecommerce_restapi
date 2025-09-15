@@ -35,4 +35,19 @@ class JsonResponseHelper
             $status
         );
     }
+
+      public static function makeRefreshCookie(string $token)
+    {
+        return cookie(
+            'refresh_token',
+            $token,
+            60 * 24 * 7,            
+            '/',
+            null,                    
+            true,
+            true,                    
+            false,                 
+            'None'                    
+        );
+    }
 }
