@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             // $table->string('payment_id')->unique();
-            $table->string('name'); // Stripe’s payment intent ID
+            $table->string('name'); 
             $table->decimal('price', 50, 2)->default(0);
             $table->integer('is_featured')->default(0);
-            $table->text('featured_text')->nullable->default(null);
+            $table->text('featured_text')->nullable()->default(null);
             $table->decimal('total_revenue', 50, 2)->default(0);
             $table->integer('quantity')->default(0);
             $table->enum('status', ['pending', 'succeeded', 'failed','deleted','blocked'])->default('pending');

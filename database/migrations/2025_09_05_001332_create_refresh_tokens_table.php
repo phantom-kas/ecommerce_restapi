@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users');
             $table->string('token', 255)->unique();
             $table->text('abilities')->nullable();
+            $table->string('purpose')->nullable();
             $table->timestamp('last_used_at')->nullable();
             $table->timestamp('expires_at')->nullable()->index();
             $table->boolean('is_refresh')->default(false);

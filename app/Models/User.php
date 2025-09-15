@@ -17,7 +17,7 @@ class User extends Authenticatable implements JWTSubject
     /** @use HasFactory<\Database\Factories\UserFactory> */
 
     use HasFactory, Notifiable;
-    public function createToken(string $type = 'access_token', array $customClaims = [])
+    public function createToken(string $type = 'access_token', $purpose = null)
     {
         if ($type === 'refresh_token') {
 
@@ -32,6 +32,7 @@ class User extends Authenticatable implements JWTSubject
                 'user_id' => $this->id,
                 'name' => '',
                 'token'  => hash('sha256', $refreshToken),
+                'purpose' =? $purpose,
                 'expires_at' => now()->addDays(7),
                 'created_at' => now(),
             ]);

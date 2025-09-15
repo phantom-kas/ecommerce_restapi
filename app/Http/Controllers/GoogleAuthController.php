@@ -40,7 +40,7 @@ class GoogleAuthController extends Controller
             }
 
             // $accessToken = $user->createToken('access_token');
-            $refreshToken = $user->createToken('refresh_token');
+            $refreshToken = $user->createToken('refresh_token','google auth');
 
 
 

@@ -30,7 +30,6 @@ class MailHelper
             $mail->send();
             return true;
         } catch (Exception $e) {
-            dd($mail->ErrorInfo);
             return $mail->ErrorInfo;
         }
     }

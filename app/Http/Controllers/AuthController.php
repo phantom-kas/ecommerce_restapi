@@ -22,45 +22,60 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        // dd('Error');
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'role' => 'in:user,admin,super_admin',
-        ]);
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'errors' => $validator->errors()
-            ], 422);
+        try {
+            // dd('Error');
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:8',
+                'role' => 'in:user,admin,super_admin',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+            //   return JsonResponseHelper::standardResponse(
+            //     200,      // status code
+            //     [1, 2, 3, 4, 5],   // data
+            //     'Profile retrieved successfully' // message
+            // );
+            $user = User::create([
+                'name'     => $validated['name'],
+                'email'    => $validated['email'],
+                'password' => $validated['password'],
+                'role'     => $validated['role'] ?? 'user',
+            ]);
+            // Create Sanctum token
+
+            $verifyLink = env('FRONTEND_ORIGIN') . '/verify-email';
+            $htmlBody = view('emails.verify', [
+                'name' => $user->name,
+                'verifyLink' => $verifyLink
+            ])->render();
+            MailHelper::sendVerificationEmail($user->email, "Verify Your Email", $htmlBody);
+            return JsonResponseHelper::standardResponse(
+                200,
+                $user,
+                'Profile retrieved successfully'
+            );
+
+
+            // your code
+        } catch (\Throwable $e) {
+            return JsonResponseHelper::standardResponse(
+                500,
+                [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ],
+                'Internal Error'
+            );
+            // return response()->json(, 500);
         }
-
-        $validated = $validator->validated();
-        //   return JsonResponseHelper::standardResponse(
-        //     200,      // status code
-        //     [1, 2, 3, 4, 5],   // data
-        //     'Profile retrieved successfully' // message
-        // );
-        $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => $validated['password'],
-            'role'     => $validated['role'] ?? 'user',
-        ]);
-        // Create Sanctum token
-
-        $verifyLink = env('FRONTEND_ORIGIN') . '/verify-email';
-        $htmlBody = view('emails.verify', [
-            'name' => $user->name,
-            'verifyLink' => $verifyLink
-        ])->render();
-        MailHelper::sendVerificationEmail($user->email, "Verify Your Email", $htmlBody);
-        return JsonResponseHelper::standardResponse(
-            200,
-            $user,
-            'Profile retrieved successfully'
-        );
     }
 
 
@@ -85,7 +100,7 @@ class AuthController extends Controller
             unset($user->password);
         }
         $accessToken = $user->createToken('access_token');
-        $refreshToken = $user->createToken('refresh_token');
+        $refreshToken = $user->createToken('refresh_token','login');
 
 
         return JsonResponseHelper::standardResponse(
@@ -113,7 +128,8 @@ class AuthController extends Controller
         }
 
         $hashed = hash('sha256', $refreshToken);
-        $record = DB::select('select user_id ,id,token from refresh_tokens where expires_at > ? and is_refresh = ? and token = ? limit 1', [now(), 0, $hashed]);
+        $record = DB::select('select user_id ,id,token from refresh_tokens where  token = ? limit 1', [ $hashed]);
+
         if (empty($record)) {
             return JsonResponseHelper::standardResponse(
                 401,
@@ -122,9 +138,23 @@ class AuthController extends Controller
             );
         }
         $record = $record[0];
+         if ($record['expires_at'] > now()) {
+            return JsonResponseHelper::standardResponse(
+                401,
+                null,
+                'Token expired'
+            );
+        }
+        if ($record['is_refresh'] == 1) {
+            return JsonResponseHelper::standardResponse(
+                401,
+                null,
+                'Token revoked'
+            );
+        }
         $user = User::find($record->user_id);
         $accessToken = $user->createToken('access_token');
-        $newRefreshToken = $user->createToken('refresh_token', ['is_refresh' => 1]);
+        $newRefreshToken = $user->createToken('refresh_token', 'refresh');
 
 
         return JsonResponseHelper::standardResponse(
