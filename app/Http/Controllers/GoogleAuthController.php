@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Helpers\JsonResponseHelper;
@@ -39,15 +38,26 @@ class GoogleAuthController extends Controller
                 ]);
             }
 
-            // $accessToken = $user->createToken('access_token');
-            $refreshToken = $user->createToken('refresh_token','google auth');
+            
+            
+
+           
+        $tkns = User::createToken($user->id,'google auth');
+        $accessToken = $tkns[0];
+        $refreshToken =$tkns[1];
 
 
 
             return redirect(env('FRONTEND_ORIGIN') . '/auth/callback?tkn='.$refreshToken)
                 ->withCookie(JsonResponseHelper::makeRefreshCookie($refreshToken));
         } catch (\Exception $e) {
-            return redirect('/login')->with('error', 'Failed to login with Google.');
+
+                \Log::error('Google login failed: ' . $e->getMessage(), [
+        'trace' => $e->getTraceAsString(),
+    ]);
+
+            $errorMessage = urlencode($e->getMessage());
+            return redirect(env('FRONTEND_ORIGIN'). '?error=' . $errorMessage);
         }
     }
 }

@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Validator;
 class ProductController extends Controller
 {
     //
-
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -27,14 +26,10 @@ class ProductController extends Controller
             'category' => 'required|exists:category,id',
             'media.*'     => 'nullable|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,webm|max:51200',
         ]);
-
         if ($validator->fails()) {
             return JsonResponseHelper::standardResponse(
                 400,
-                [
-                    'status' => 'error',
-
-                ],
+                ['status' => 'error',],
                 'Invalid input',
                 ['errors' => $validator->errors()]
             );
@@ -110,25 +105,13 @@ class ProductController extends Controller
     public function getMedia($id)
     {
         $media = Products::getMediaById($id);
-
         if ($media === false) {
-
-            return JsonResponseHelper::standardResponse(
-                404,
-                [$media],
-                'Product not found or no media'
-            );
+            return JsonResponseHelper::standardResponse(404, [$media], 'Product not found or no media');
         }
 
 
 
-        return  JsonResponseHelper::standardResponse(
-            201,
-            [
-                'id' => $id,
-                'media' => $media,
-            ]
-        );
+        return  JsonResponseHelper::standardResponse(201, ['id' => $id, 'media' => $media,]);
     }
 
     public function index(Request $request)
@@ -136,18 +119,28 @@ class ProductController extends Controller
         $cursor = $request->query('cursor', 1);
         $page = $cursor;
         $category = $request->query('category');
+        $featured = $request->query('featured');
         $brands = $request->query('brand', []);
         $sort = $request->query('sort');
         $perPage = request()->query('perpage', 20);
         $offset = ($page - 1) * $perPage;
         // $placeholders = implode(',', array_fill(0, count($category), '?'));
         $query = DB::table('products as p')
-            ->select('p.*')
-            ->when($brands, function ($q) use ($brands) {
+            ->select('p.*');
+
+        if ($featured) {
+            $query->join('featured as f', 'f.product_id', '=', 'p.id')->addSelect('f.id as featured_id');
+        } else {
+            $query->leftJoin('featured as f', 'f.product_id', '=', 'p.id')
+                ->addSelect('f.id as featured_id');
+        }
+        if ($brands) {
+            $query->when($brands, function ($q) use ($brands) {
                 $q->join('products_brand as pb', 'p.id', '=', 'pb.product_id')
                     ->join('brand as b', 'b.id', '=', 'pb.brand_id')
                     ->whereIn('b.name', $brands);
             });
+        }
         if ($category) {
             $query->join("products_category as pc", 'p.id', '=', 'pc.product_id')
                 ->join('category as c', 'c.id', '=', 'pc.category_id')
@@ -416,5 +409,24 @@ class ProductController extends Controller
     public function getFeatrued()
     {
         return JsonResponseHelper::standardResponse(200, DB::select("SELECT id, name , media ,price , quantity from products order by review desc limit 6"));
+    }
+
+    public function addProductToFeatured(Request $request, $id)
+    {
+        if (count(DB::select("SELECT id from featured where product_id = ?", [$id])) > 0) {
+            return JsonResponseHelper::standardResponse(400, null, 'Product already part of featured');
+        }
+        if (DB::table('featured')->count() > 5) {
+            return JsonResponseHelper::standardResponse(400, null, 'You cant have more than 6 items featured at a time');
+        }
+        $featured =  DB::table('featured')->insert(['product_id' => $id]);
+        return JsonResponseHelper::standardResponse(200, $featured, "Added successfully");
+    }
+
+
+    public function removeFromFeatured($id)
+    {
+        $featured =  DB::table('featured')->where('product_id', $id)->delete();
+        return JsonResponseHelper::standardResponse(200, $featured, "Removed successfully");
     }
 }

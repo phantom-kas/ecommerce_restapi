@@ -17,31 +17,33 @@ class User extends Authenticatable implements JWTSubject
     /** @use HasFactory<\Database\Factories\UserFactory> */
 
     use HasFactory, Notifiable;
-    public function createToken(string $type = 'access_token', $purpose = null)
+    public static function createToken( $id,$purpose = null)
     {
-        if ($type === 'refresh_token') {
+       
 
             $refreshToken = Str::random(64);
 
 
             DB::update(
                 'update refresh_tokens set is_refresh = ? where user_id = ?',
-                [true, $this->id]
+                [1, $id]
             );
             DB::table('refresh_tokens')->insert([
-                'user_id' => $this->id,
-                'name' => '',
+                'user_id' => $id,
+                'name' => $purpose,
                 'token'  => hash('sha256', $refreshToken),
-                'purpose' =? $purpose,
+                'purpose' => $purpose,
                 'expires_at' => now()->addDays(7),
                 'created_at' => now(),
+                'is_refresh' => 0
             ]);
 
-            return $refreshToken;
-        }
+             
+        
 
         // Otherwise, generate a JWT access token
-        return JWTAuth::fromUser($this);
+        $user = User::findOrFail($id);
+        return [JWTAuth::fromUser($user),$refreshToken];
     }
 
     public function getJWTIdentifier()
@@ -53,6 +55,8 @@ class User extends Authenticatable implements JWTSubject
     {
         return [
             'role' => $this->role, // optional: include role in token
+            'id' =>$this->id,
+            'email'=>$this->id
         ];
     }
 

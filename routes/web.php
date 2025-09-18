@@ -10,3 +10,8 @@ Route::get('/', function () {
 Route::get('/test', function () {
     return "oposadsamdsam";
 });
+
+
+require __DIR__ . '/seo.php';
+
+

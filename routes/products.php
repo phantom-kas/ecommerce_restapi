@@ -23,6 +23,8 @@ Route::middleware(['jwt.custom'])->group(function () {
         null,
         'token valid'
     ));
+    Route::delete('/product/delete-from-featured/{id}', [ProductController::class, 'removeFromFeatured']);
+    Route::post('/product/add-to-featured/{id}', [ProductController::class, 'addProductToFeatured']);
 });
 
 Route::get('/products', [ProductController::class, 'index']);

@@ -15,8 +15,13 @@ return new class extends Migration
         Schema::create('system', function (Blueprint $table) {
             $table->id();
             $table->integer('products_count')->default(0);
-            $table->integer('category_count')->default(0);
             $table->integer('brand_count')->default(0);
+            $table->integer('category_count')->default(0);
+            $table->integer('allow_checkout')->default(0);
+            $table->text('call_to_action_text')->nullable()->default(null);
+            $table->text('hero_text')->nullable()->default(null);
+            $table->text('alt_checkout_link')->nullable()->default(null);
+            $table->text('media')->nullable()->default(null);
             $table->timestamps();
         });
 

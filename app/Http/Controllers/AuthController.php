@@ -99,8 +99,13 @@ class AuthController extends Controller
         if (isset($user->password)) {
             unset($user->password);
         }
-        $accessToken = $user->createToken('access_token');
-        $refreshToken = $user->createToken('refresh_token','login');
+
+
+        
+        $tkns = User::createToken($user->id,'login');
+        $accessToken = $tkns[0];
+        $refreshToken =$tkns[1];
+
 
 
         return JsonResponseHelper::standardResponse(
@@ -128,7 +133,7 @@ class AuthController extends Controller
         }
 
         $hashed = hash('sha256', $refreshToken);
-        $record = DB::select('select user_id ,id,token from refresh_tokens where  token = ? limit 1', [ $hashed]);
+        $record = DB::select('select expires_at,is_refresh, user_id ,id,token from refresh_tokens where  token = ? limit 1', [ $hashed]);
 
         if (empty($record)) {
             return JsonResponseHelper::standardResponse(
@@ -138,25 +143,24 @@ class AuthController extends Controller
             );
         }
         $record = $record[0];
-         if ($record['expires_at'] > now()) {
+         if ($record->expires_at < now()) {
             return JsonResponseHelper::standardResponse(
                 401,
                 null,
                 'Token expired'
             );
         }
-        if ($record['is_refresh'] == 1) {
+        if ($record->is_refresh == 1) {
             return JsonResponseHelper::standardResponse(
                 401,
                 null,
                 'Token revoked'
             );
         }
-        $user = User::find($record->user_id);
-        $accessToken = $user->createToken('access_token');
-        $newRefreshToken = $user->createToken('refresh_token', 'refresh');
-
-
+        // $user = User::find($record->user_id);
+        $tkns = User::createToken($record->user_id,'refresh');
+        $accessToken = $tkns[0];
+        $newRefreshToken =$tkns[1];
         return JsonResponseHelper::standardResponse(
             200,
             [
@@ -164,7 +168,7 @@ class AuthController extends Controller
                 'refresh_token' => null,
             ],
             'new rtkn'
-        )->withCookie(JsonResponseHelper::makeRefreshCookie($refreshToken));
+        )->withCookie(JsonResponseHelper::makeRefreshCookie($newRefreshToken));
     }
 
 
@@ -178,8 +182,6 @@ class AuthController extends Controller
 
 
         $token = Str::random(64);
-
-        // Store token in password_resets table
         DB::table('password_resets')->updateOrInsert(
             ['email' => $request->email],
             [
@@ -187,15 +189,11 @@ class AuthController extends Controller
                 'created_at' => Carbon::now()
             ]
         );
-
-        // Send reset email
         $resetLink = env('FRONTEND_ORIGIN') . "/reset-password?token=$token&email=" . $request->email;
-
         Mail::send('emails.reset-password', ['resetLink' => $resetLink], function ($message) use ($request) {
             $message->to($request->email);
             $message->subject('Reset your password');
         });
-
         return JsonResponseHelper::standardResponse(
             200,
             null,
@@ -210,12 +208,10 @@ class AuthController extends Controller
             'token' => 'required|string',
             'password' => 'required|string|min:8|confirmed'
         ]);
-
         $reset = DB::table('password_resets')
             ->where('email', $request->email)
             ->where('token', $request->token)
             ->first();
-
         if (!$reset) {
             return JsonResponseHelper::standardResponse(
                 400,
@@ -227,9 +223,7 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
         $user->password = Hash::make($request->password);
         $user->save();
-
         DB::table('password_resets')->where('email', $request->email)->delete();
-
         return JsonResponseHelper::standardResponse(
             200,
             null,
@@ -247,9 +241,7 @@ class AuthController extends Controller
                 return response()->json(['error' => 'Token not provided'], 400);
             }
 
-            // Decode payload
             $payload = \Tymon\JWTAuth\Facades\JWTAuth::getPayload($token)->toArray();
-
             return response()->json([
                 'success' => true,
                 'payload' => $payload,

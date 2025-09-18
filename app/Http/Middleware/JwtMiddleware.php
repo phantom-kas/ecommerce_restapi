@@ -31,13 +31,10 @@ class JwtMiddleware
           null,
           'Unauthorized'
         );
-        // return response()->json(['error' => ''], 401);
       }
-      // dd([$user]);
       logger('JwtMiddleware running...');
       error_log("bootstrap/app.php is loading...");
 
-      // Attach user to request
       $request->merge(['user' => $user]);
     } catch (JWTException $e) {
       return JsonResponseHelper::standardResponse(

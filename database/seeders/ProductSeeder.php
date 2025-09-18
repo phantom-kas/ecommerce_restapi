@@ -7,6 +7,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Faker\Factory as Faker;
 
 class ProductSeeder extends Seeder
 {
@@ -16,7 +17,7 @@ class ProductSeeder extends Seeder
    public function run(): void
     {
         // Example seed data (replace IDs with real ones from your brand & category tables)
-        $faker = fake();
+        $faker = Faker::create();
 
         // Assuming you already have some brand & category IDs
         $brandIds    = DB::table('brand')->pluck('id')->toArray();
